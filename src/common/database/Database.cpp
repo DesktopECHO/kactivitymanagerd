@@ -201,31 +201,16 @@ Database::Ptr Database::instance(Source source, OpenMode openMode)
         ptr->setPragma(QStringLiteral("synchronous = 0"));
 
     } else {
-        // Using the write-ahead log and sync = NORMAL for faster writes
-        ptr->setPragma(QStringLiteral("synchronous = 1"));
+        // PRAGMA schema.synchronous = 0 OFF | 1 NORMAL | 2 FULL | 3 EXTRA
+        ptr->setPragma(QStringLiteral("synchronous = 2"));
     }
 
-    // Maybe we should use the write-ahead log
-    auto walResult = ptr->pragma(QStringLiteral("journal_mode = WAL"));
-
-    if (walResult != "wal") {
-        qCWarning(KAMD_LOG_RESOURCES) << "KActivities: Database can not be opened in WAL mode. Check the "
-                                         "SQLite version (required >3.7.0). And whether your filesystem "
-                                         "supports shared memory";
-
-        ptr->d->database->close();
-
-        return nullptr;
-    }
-
-    // We don't have a big database, lets flush the WAL when
-    // it reaches 400k, not 4M as is default
-    ptr->setPragma(QStringLiteral("wal_autocheckpoint = 100"));
+    // WSL Fixup - Don't use Write-Ahead Logging
+    auto walResult = ptr->pragma(QStringLiteral("journal_mode = TRUNCATE"));
 
     qCDebug(KAMD_LOG_RESOURCES) << "KActivities: Database connection: " << ptr->d->database->connectionName()
         << "\n    query_only:         " << ptr->pragma(QStringLiteral("query_only"))
         << "\n    journal_mode:       " << ptr->pragma(QStringLiteral("journal_mode"))
-        << "\n    wal_autocheckpoint: " << ptr->pragma(QStringLiteral("wal_autocheckpoint"))
         << "\n    synchronous:        " << ptr->pragma(QStringLiteral("synchronous"))
         ;
 
